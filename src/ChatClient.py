@@ -3,6 +3,9 @@ import json
 import select
 import subprocess
 import time
+import os
+from subprocess import DEVNULL, STDOUT, check_call # nick added
+from datetime import datetime
 
 class ChatClient(object):
 	
@@ -32,8 +35,8 @@ class ChatClient(object):
 		catalog_socket.sendto(data, ('catalog.cse.nd.edu', 9097))
 
 	def check_catalog(self):
-		print('Looking for users....')
-		subprocess.check_call(['curl', 'http://catalog.cse.nd.edu:9097/query.json', '--output', 'catalog'])    
+		#print('Looking for users....') # uncomment this
+		subprocess.check_call(['curl', 'http://catalog.cse.nd.edu:9097/query.json', '--output', 'catalog'], stdout=DEVNULL, stderr=DEVNULL)    
 		f = open('catalog')                                                                                   
 		data = json.load(f)
 		users  = [x for x in data if 'type' in x and (x['type'] == 'nsbs-user' or x['type'] == 'nsbs-group')]
@@ -52,6 +55,21 @@ class ChatClient(object):
 			header = '{}:'.format(len(msg))
 			msg = header.encode('utf_8') + msg
 			self.accepted_connections[user].sendall(msg)
+
+
+			# write to file
+			fileName = "history.txt"
+			file2w = open(fileName,'a')
+			chat_log = {}
+			chat_log["date_time"] = datetime.now().strftime("%b-%d-%Y, %H:%M:%S")
+			chat_log["sender"] = self.name
+			chat_log["receiver"] = user
+			chat_log["message"] = message
+			json.dump(chat_log,file2w)
+			file2w.write('\n')
+			file2w.flush()	
+			os.fsync(file2w.fileno())
+			file2w.close()
 		else:
 			print('Unable to send message. User {} is either unknown or has not accepted request.'. format(user))
 
@@ -83,7 +101,7 @@ class ChatClient(object):
 		if method == 'Request':
 			print('DM Request From {}...'.format(name))
 			print('accept DM request from {}? [y/n]...'.format(name))
-			choice = raw_input()
+			choice = input()
 			if choice == 'n':
 				return_msg = {'method':'Response', 'name':self.name, 'Response':'n'}
 				return_msg = json.dumps(return_msg)
@@ -117,11 +135,16 @@ class ChatClient(object):
 
 			else:	
 				message = msg['message']
-				print('DM From {}: {}'.format(name, message))
+				print("\n")
+				print("*"*94)
+				#print('DM From {}: {}'.format(name, message))
+				print(f'DM From {name}: \n \t {message}')
+				print("*"*94)
+
 		
 							
 	def check_sockets(self):
-		print('checking open sockets...')
+		#print('checking open sockets...') # uncomment this
 		readable, writable, exceptional = select.select(list(self.socket_list), [], list(self.socket_list), 2)
 		for read_socket in readable:                                                                  
 			if read_socket == self.socket:
@@ -140,7 +163,7 @@ class ChatClient(object):
 						self.socket_list.remove(clientsocket)
 						closed = True
 						break
-                                        header += msg
+					header += msg
 
 				if not closed:
 					size = int(header.decode('utf_8').split(':')[0])
@@ -152,4 +175,19 @@ class ChatClient(object):
 						msg += rsp.decode('utf_8')
 					msg = json.loads(msg)
 					self.handle_msg(msg, clientsocket)
+
+	def show_chatHistory(self,name):
+		messages = []
+		if os.path.exists("history.txt") == True:
+			f = open("history.txt",'r')
+			fileData = f.readlines()
+			for line in fileData:
+				messages.append(json.loads(line))
+			for msg in messages:
+				if msg["receiver"]==name:
+					print(f'{msg["sender"]} messaged you @ {msg["date_time"]} \n \t {msg["message"]} \n')
+				if msg["sender"]==name:
+					print(f'You messaged {msg["receiver"]} @ {msg["date_time"]} \n \t {msg["message"]} \n')
+			f.close()
+			
 
