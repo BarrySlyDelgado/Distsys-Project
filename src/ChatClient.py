@@ -31,12 +31,14 @@ class ChatClient(object):
 			print(user)
 
 	def show_current_connections(self):
+		print('Current Conncted Users:  ')
 		for user in self.accepted_connections:
-			print('Current Conncted Users:  ')
 			print(user)
 	def show_current_group_connections(self):
+		print('Current Connected Grpups:  ')	
 		for user in self.accepted_group_connections:
-			print('Current Connected Grpups:  ')	
+			print(user)
+		for user in self.group_sockets:
 			print(user)
 
 	def update_catalog(self):
@@ -115,30 +117,60 @@ class ChatClient(object):
 			file2w.close()
 		else:
 			print('Unable to send message. User {} is either unknown or has not accepted request.'. format(user))
+
 	def send_Group_DM(self, user, message):
-                if user in self.accepted_group_connections:
-                        msg = {'method':'Send_Group_DM', 'name':self.name, 'message':str(message), 'group':user}
-                        msg = json.dumps(msg)
-                        msg = msg.encode('utf_8')
-                        header = '{}:'.format(len(msg))
-                        msg = header.encode('utf_8') + msg
-                        self.accepted_group_connections[user].sendall(msg)
+		if user in self.accepted_group_connections:
+			msg = {'method':'Send_Group_DM', 'name':self.name, 'message':str(message), 'group':user}
+			msg = json.dumps(msg)
+			msg = msg.encode('utf_8')
+			header = '{}:'.format(len(msg))
+			msg = header.encode('utf_8') + msg
+			self.accepted_group_connections[user].sendall(msg)
+
+			# write to file
+			fileName = "history.txt"
+			file2w = open(fileName,'a')
+			chat_log = {}
+			chat_log["date_time"] = datetime.now().strftime("%b-%d-%Y, %H:%M:%S")
+			chat_log["sender"] = self.name
+			chat_log["receiver"] = user
+			chat_log["message"] = message
+			json.dump(chat_log,file2w)
+			file2w.write('\n')
+			file2w.flush()
+			os.fsync(file2w.fileno())
+			file2w.close()
+
+		elif user in self.group_sockets:
+			group = user
+			print("\n")
+			print("*"*94)
+			print(f'Group DM From {self.name} in group {user}: \n \t {message}')
+			print("*"*94)
+			msg = {'method':'Group_DM', 'name':self.name, 'message':str(message), 'group':user}
+			msg = json.dumps(msg)
+			msg = msg.encode('utf_8')
+			header = '{}:'.format(len(msg))
+			msg = header.encode('utf_8') + msg
+			for x in self.group_sockets[group]['users']:
+				self.group_sockets[group]['users'][x].sendall(msg)
 
                         # write to file
-                        fileName = "history.txt"
-                        file2w = open(fileName,'a')
-                        chat_log = {}
-                        chat_log["date_time"] = datetime.now().strftime("%b-%d-%Y, %H:%M:%S")
-                        chat_log["sender"] = self.name
-                        chat_log["receiver"] = user
-                        chat_log["message"] = message
-                        json.dump(chat_log,file2w)
-                        file2w.write('\n')
-                        file2w.flush()
-                        os.fsync(file2w.fileno())
-                        file2w.close()
-                else:
-                        print('Unable to send message. User {} is either unknown or has not accepted request.'. format(user))
+			fileName = "history.txt"
+			file2w = open(fileName,'a')
+			chat_log = {}
+			chat_log["date_time"] = datetime.now().strftime("%b-%d-%Y, %H:%M:%S")
+			chat_log["sender"] = self.name
+			chat_log["receiver"] = user
+			chat_log["message"] = message
+			json.dump(chat_log,file2w)
+			file2w.write('\n')
+			file2w.flush()
+			os.fsync(file2w.fileno())
+			file2w.close()
+
+		else:
+			print('Unable to send message. User {} is either unknown or has not accepted request.'. format(user))
 
 	def request_DM(self, user):	
 		if user in self.user_list:
