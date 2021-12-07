@@ -4,7 +4,7 @@ import select
 import subprocess
 import time
 import os
-from subprocess import DEVNULL, STDOUT, check_call # nick added
+from subprocess import DEVNULL, STDOUT, check_call 
 from datetime import datetime
 
 class ChatClient(object):
@@ -24,19 +24,18 @@ class ChatClient(object):
 		
 	def show_current_users(self):
 		for user in self.user_list:
-			print(user)
+			if user != self.name:
+				print(user)
 
 	def show_current_groups(self):
 		for user in self.group_list:
 			print(user)
 
 	def show_current_connections(self):
-		print('Current Conncted Users:  ')
 		for user in self.accepted_connections:
 			print(user)
 
 	def show_current_group_connections(self):
-		print('Current Connected Groups:  ')	
 		for user in self.accepted_group_connections:
 			print(user)
 		for user in self.group_sockets:
@@ -56,7 +55,6 @@ class ChatClient(object):
 			catalog_socket.sendto(data, ('catalog.cse.nd.edu', 9097))
 
 	def check_catalog(self):
-		#print('Looking for users....') # uncomment this
 		subprocess.check_call(['curl', 'http://catalog.cse.nd.edu:9097/query.json', '--output', 'catalog'], stdout=DEVNULL, stderr=DEVNULL)    
 		f = open('catalog')                                                                                   
 		data = json.load(f)
@@ -91,9 +89,10 @@ class ChatClient(object):
 		data = json.dumps(data)
 		data = data.encode('utf_8')
 		catalog_socket.sendto(data, ('catalog.cse.nd.edu', 9097))
-		print('Created a group named {}'.format(name))	
+		print('\nCreated a group named {}'.format(name))	
 		
 	def send_DM(self, user, message):
+
 		if user in self.accepted_connections:
 			msg = {'method':'DM', 'name':self.name, 'message':str(message)}
 			msg = json.dumps(msg)
@@ -108,6 +107,7 @@ class ChatClient(object):
 			file2w = open(fileName,'a')
 			chat_log = {}
 			chat_log["date_time"] = datetime.now().strftime("%b-%d-%Y, %H:%M:%S")
+			chat_log["type"] = "personal"
 			chat_log["sender"] = self.name
 			chat_log["receiver"] = user
 			chat_log["message"] = message
@@ -133,6 +133,7 @@ class ChatClient(object):
 			file2w = open(fileName,'a')
 			chat_log = {}
 			chat_log["date_time"] = datetime.now().strftime("%b-%d-%Y, %H:%M:%S")
+			chat_log["type"] = "group"
 			chat_log["sender"] = self.name
 			chat_log["receiver"] = user
 			chat_log["message"] = message
@@ -144,10 +145,6 @@ class ChatClient(object):
 
 		elif user in self.group_sockets:
 			group = user
-			print("\n")
-			print("*"*94)
-			print(f'Group DM From {self.name} in group {user}: \n \t {message}')
-			print("*"*94)
 			msg = {'method':'Group_DM', 'name':self.name, 'message':str(message), 'group':user}
 			msg = json.dumps(msg)
 			msg = msg.encode('utf_8')
@@ -156,11 +153,12 @@ class ChatClient(object):
 			for x in self.group_sockets[group]['users']:
 				self.group_sockets[group]['users'][x].sendall(msg)
 
-                        # write to file
+            # write to file
 			fileName = "history.txt"
 			file2w = open(fileName,'a')
 			chat_log = {}
 			chat_log["date_time"] = datetime.now().strftime("%b-%d-%Y, %H:%M:%S")
+			chat_log["type"] = "group"
 			chat_log["sender"] = self.name
 			chat_log["receiver"] = user
 			chat_log["message"] = message
@@ -299,10 +297,11 @@ class ChatClient(object):
 			else:
 				group = msg['group']
 				message = msg['message']
-				print("\n")
-				print("*"*94)
-				print(f'Group DM From {name} in group {group}: \n \t {message}')
-				print("*"*94)
+				if self.name != name:
+					print("\n")
+					print("*"*94)
+					print(f'Group DM From {name} in group {group}: \n \t {message}')
+					print("*"*94)
 
 		elif method == 'Send_Group_DM':
 			group = msg['group']
@@ -360,24 +359,33 @@ class ChatClient(object):
 					msg = json.loads(msg)
 					self.handle_msg(msg, clientsocket)
 
-	def show_chatHistory(self,name):
+	def show_chat_personal(self,name):
 		messages = []
-		accepted_groups = ["testgroup1"] # edit this to get accepted groups list
 		if os.path.exists("history.txt") == True:
 			f = open("history.txt",'r')
 			fileData = f.readlines()
 			for line in fileData:
 				messages.append(json.loads(line))
 			for msg in messages:
-				if msg["sender"]==name and msg["receiver"] in accepted_groups:
-					print(f'You sent a group message to {msg["receiver"]} @ {msg["date_time"]} \n \t {msg["message"]} \n')
-				elif msg["receiver"] in accepted_groups:
-					print(f'{msg["sender"]} sent a group message to {msg["receiver"]} @ {msg["date_time"]} \n \t {msg["message"]} \n')
-				elif msg["receiver"]==name:
-					print(f'{msg["sender"]} messaged you @ {msg["date_time"]} \n \t {msg["message"]} \n')
-				elif msg["sender"]==name:
-					print(f'You messaged {msg["receiver"]} @ {msg["date_time"]} \n \t {msg["message"]} \n')
+				if msg["receiver"]==name and msg["type"] == "personal":
+					print(f'--> {msg["sender"]} messaged you @ {msg["date_time"]} \n \t {msg["message"]} \n')
+				if msg["sender"]==name and msg["type"] == "personal":
+					print(f'\t <-- You messaged {msg["receiver"]} @ {msg["date_time"]} \n \t {msg["message"]} \n')
+			f.close()
+
+	def show_chat_group(self,name):
+		messages = []
+		accepted_groups = list(self.accepted_group_connections.keys()) # edit this to get accepted groups list
+		my_group = list(self.group_sockets.keys())
+		if os.path.exists("history.txt") == True:
+			f = open("history.txt",'r')
+			fileData = f.readlines()
+			for line in fileData:
+				messages.append(json.loads(line))
+			for msg in messages:
+				if msg["sender"]==name and (msg["receiver"] in accepted_groups or msg["receiver"] in my_group) and msg["type"] == "group":
+					print(f'\t <-- You sent a group message to {msg["receiver"]} @ {msg["date_time"]} \n \t {msg["message"]} \n')
+				elif (msg["receiver"] in accepted_groups or msg["receiver"] in my_group ) and msg["type"] == "group":
+					print(f'--> {msg["sender"]} sent a group message to {msg["receiver"]} @ {msg["date_time"]} \n \t {msg["message"]} \n')
 				
 			f.close()
-			
-	
