@@ -10,13 +10,14 @@ import hashlib
 
 
 def screenMenu(username):
-	greetings = str(f'| Logged in as: {username} |')
+	greetings = str(f'|Logged in as: {username}|')
 	print("-"*len(greetings))
 	print(greetings)
-	print("-"*110)
-	print("Menu | 1: Show Users | 2: Show Groups | 3: Show Connections | 4: Connect to User | 5: Send Message to User |")
-	print("     | 6: Connect to Group | 7: Send Message to Group | 8: Create Group | 9: History | 0: Exit")
-	print("-"*110)
+	print("-"*91)
+	print("Menu | 1: Online Users/Groups | 2: My Connections      | 3: Create Group     |")
+	print("     | 4: Connect to User     | 5: Connect to Group    | 6: Message User     | 0: Sign Out")
+	print("     | 7: Message Group       | 8: Show Personal Chats | 9: Show Group Chats |")
+	print("-"*91)
 
 def login_auth(username):
 	account_list = []
@@ -75,73 +76,116 @@ def start_chat(name):
 			if choice == '1':
 				os.system('clear')
 				screenMenu(name)
-				print("Current Users")
+				print("Current Users:")
+				print("----------------------------------")
 				client.show_current_users()
+				print("\nCurrent Groups: ")
+				print("----------------------------------")
+				client.show_current_groups()
+
 			elif choice == '2':
 				os.system('clear')
 				screenMenu(name)
-				print("Current Groups: ")
-				client.show_current_groups()
+				print("Connected Users:")
+				print("----------------------------------")
+				client.show_current_connections()
+				print("\nConnected Groups: ")
+				print("----------------------------------")
+				client.show_current_group_connections()
+			
 			elif choice == '3':
-				os.system('clear')
-				screenMenu(name)
-				print("Current Connections: ")
-				client.show_current_connections()
-				client.show_current_group_connections()
-			elif choice == '4':
-				os.system('clear')
-				screenMenu(name)
-				print("Avilable Users:")
-				client.show_current_users()
-				print('Enter the user you would like to connect to:')
-				user = input()
-				client.request_DM(user)
-			elif choice == '5':	
-				os.system('clear')
-				screenMenu(name)
-				print("Avilable Connections:")
-				client.show_current_connections()
-				print('Enter the user you would like to message:')
-				user = input()	
-				print('Enter your message to {}:'.format(user))
-				message = input()
-				client.send_DM(user, message)
-			elif choice == '6':
-				os.system('clear')
-				screenMenu(name)
-				print("Avilable Groups:")
-				client.show_current_groups()
-				print('Enter the group you would like to connect to:')
-				user = input()
-				client.request_Group(user)
-			elif choice == '7':	
-				os.system('clear')
-				screenMenu(name)
-				print("Avilable Connections:")
-				client.show_current_group_connections()
-				print('Enter the group you would like to message:')
-				user = input()	
-				print('Enter your message to {}:'.format(user))
-				message = input()
-				client.send_Group_DM(user, message)
-			elif choice == '8':
 				os.system('clear')
 				screenMenu(name)
 				print('Enter the name of the group you want to create:')
 				user = input()
 				client.create_group(user)
+
+			elif choice == '4':
+				os.system('clear')
+				screenMenu(name)
+				print("Avilable Users:")
+				print("----------------------------------")
+				client.show_current_users()
+				print('\nEnter the user you would like to connect to:')
+				user = input()
+				if user not in client.user_list:
+					print("\nInvalid Selection, press 4 to try again, or choose from menu.")
+				else:
+					client.request_DM(user)
+
+			elif choice == '5':
+				os.system('clear')
+				screenMenu(name)
+				print("Avilable Groups:")
+				print("----------------------------------")
+				client.show_current_groups()
+				print('\nEnter the group you would like to connect to:')
+				user = input()
+				if user not in client.group_list:
+					print("\nInvalid Selection, press 5 to try again, or choose from menu.")
+				else:
+					client.request_Group(user)
+
+			elif choice == '6':	
+				os.system('clear')
+				screenMenu(name)
+				print("Connected Users:")
+				print("----------------------------------")
+				client.show_current_connections()
+				if len(list(client.accepted_connections.keys())) == 0:
+					print("No conneted users to send message !!")
+				else:
+					print('\nEnter the user you would like to message:')
+					user = input()	
+					if user not in client.accepted_connections:
+						print("\nInvalid Selection, press 6 to try again, or choose from menu.")
+					else:
+						print('\nEnter your message to {}:'.format(user))
+						message = input()
+						client.send_DM(user, message)
+
+				
+			elif choice == '7':	
+				os.system('clear')
+				screenMenu(name)
+				print("Connected Group:")
+				print("----------------------------------")
+				client.show_current_group_connections()
+				if len(list(client.accepted_group_connections.keys())) == 0 and len(list(client.group_sockets.keys())) == 0:
+					print("No conneted groups to send message !!")
+				else:
+					print('\nEnter the group you would like to message:')
+					user = input()	
+					if user not in client.accepted_group_connections and user not in client.group_sockets:
+						print("\nInvalid Selection, press 7 to try again, or choose from menu.")
+					else:
+						print('\nEnter your message to {}:'.format(user))
+						message = input()
+						client.send_Group_DM(user, message)
+
+			elif choice == '8':	
+				os.system('clear')
+				screenMenu(name)
+				print("Personal Messages: \n")
+				client.show_chat_personal(name)
+
 			elif choice == '9':	
 				os.system('clear')
 				screenMenu(name)
-				print("Inbox: \n")
-				client.show_chatHistory(name)
+				print("Group Messages: \n")
+				client.show_chat_group(name)
+
 			elif choice == '0':	
+				print("----------------------------------")
+				print("Sucessfully Logged out !!")
+				print("----------------------------------")
+
 				quit()
 
 			else:
 				os.system('clear')
-				print("Invalid Option \n")
 				screenMenu(name)
+				print("Invalid Option")
 	
 
 if __name__ == "__main__":
