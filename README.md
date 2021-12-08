@@ -1,20 +1,24 @@
 # Distsys-Project
 
-To start the client run  `$ python Chat.py`
+To start the chat interface run  `$ python Chat.py`
+You will be asked to enter the username and either create an account or log into the account by inputing the password. Once susessfully loggeded in you are discoverable by other users under your username.
 
-You will be prompted to login if you have an existing account or sign up as new user.
-If you sucessfully login with correct combination of username and password or sucessfully signup you will be discoverable by other users under your username.
+Once the program has started you will be presented a menu:
+ 
+--------------------
+|Logged in as: nick|
+-------------------------------------------------------------------------------------------
+Menu | 1: Online Users/Groups | 2: My Connections      | 3: Create Group     |
+     | 4: Connect to User     | 5: Connect to Group    | 6: Message User     | 0: Sign Out
+     | 7: Message Group       | 8: Show Personal Chats | 9: Show Group Chats |
+-------------------------------------------------------------------------------------------	
 
-Once the program has started you will be presented a menu with your username at the top:
-
-----------------------
-| Logged in as: [[username]] |
---------------------------------------------------------------------------------------------------------------
-Menu | 1: Show Users | 2: Show Groups | 3: Show Connections | 4: Connect to User | 5: Send Message to User |
-     | 6: Connect to Group | 7: Send Message to Group | 8: Create Group | 9: History | 0: Exit
---------------------------------------------------------------------------------------------------------------
+Select from the menue as needed.
 
 Incoming requests or messages will appear on screen. 
 DM requests require user input to either accept or decline the request.
-You can exit out by entering 0.
+
+Start a group by selecting 3 from the menu and you will be prompted to input the name of the group. Your group will be discoverable by the users under that name. 
+
+Type 0 to sign out.
 

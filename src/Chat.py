@@ -35,8 +35,6 @@ def login_auth(username):
 			return "sucess"
 		else:
 			print("Incorrect Password !! login failed !!")
-			print(crypt.crypt(pw))
-			print(credentials[username])
 			return "failed"
 	
 	else:
@@ -176,6 +174,7 @@ def start_chat(name):
 				client.show_chat_group(name)
 
 			elif choice == '0':	
+				client.logout(name)
 				print("----------------------------------")
 				print("Sucessfully Logged out !!")
 				print("----------------------------------")

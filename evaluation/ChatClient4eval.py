@@ -27,9 +27,6 @@ class ChatClient(object):
 			if user != self.name:
 				print(user)
 
-	def logout(self,name):
-		self.user_list.pop(name)
-
 	def show_current_groups(self):
 		for user in self.group_list:
 			print(user)
@@ -45,14 +42,14 @@ class ChatClient(object):
 			print(user)
 
 	def update_catalog(self):
-		data = {"type" : "nsbs-user", "owner" : self.name, "port" : self.socket.getsockname()[1], "project":self.name}
+		data = {"type" : "nsbs2-user", "owner" : self.name, "port" : self.socket.getsockname()[1], "project":self.name}
 		catalog_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		data = json.dumps(data)
 		data = data.encode('utf_8')
 		catalog_socket.sendto(data, ('catalog.cse.nd.edu', 9097))
 
 		for group in self.group_sockets:
-			data = {"type" : "nsbs-group", "owner" : self.name, "port" : self.group_sockets[group]['socket'].getsockname()[1], "project":group}
+			data = {"type" : "nsbs2-group", "owner" : self.name, "port" : self.group_sockets[group]['socket'].getsockname()[1], "project":group}
 			data = json.dumps(data)
 			data = data.encode('utf_8')
 			catalog_socket.sendto(data, ('catalog.cse.nd.edu', 9097))
@@ -61,7 +58,7 @@ class ChatClient(object):
 		subprocess.check_call(['curl', 'http://catalog.cse.nd.edu:9097/query.json', '--output', 'catalog'], stdout=DEVNULL, stderr=DEVNULL)    
 		f = open('catalog')                                                                                   
 		data = json.load(f)
-		users  = [x for x in data if 'type' in x and (x['type'] == 'nsbs-user')]
+		users  = [x for x in data if 'type' in x and (x['type'] == 'nsbs2-user')]
 		for user in users:
 			name = user['owner']
 			port = user['port']
@@ -69,7 +66,7 @@ class ChatClient(object):
 			node_type = user['type']
 			self.user_list[name] = {'server':server, 'port':port, 'type':node_type}         
 
-		groups  = [x for x in data if 'type' in x and (x['type'] == 'nsbs-group')]
+		groups  = [x for x in data if 'type' in x and (x['type'] == 'nsbs2-group')]
 		for group in groups:
 				name = group['project']
 				port = group['port']
@@ -87,7 +84,7 @@ class ChatClient(object):
 		self.group_sockets[name] = {"socket":new_socket, 'port': new_socket.getsockname()[1], "users": {}}
 		self.socket_list.add(new_socket)
 
-		data = {"type" : "nsbs-group", "owner" : self.name, "port" : new_socket.getsockname()[1], "project":name}
+		data = {"type" : "nsbs2-group", "owner" : self.name, "port" : new_socket.getsockname()[1], "project":name}
 		catalog_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		data = json.dumps(data)
 		data = data.encode('utf_8')
@@ -95,35 +92,29 @@ class ChatClient(object):
 		print('\nCreated a group named {}'.format(name))	
 		
 	def send_DM(self, user, message):
+		msg = {'method':'DM', 'name':self.name, 'message':str(message)}
+		msg = json.dumps(msg)
+		msg = msg.encode('utf_8')
+		header = '{}:'.format(len(msg))
+		msg = header.encode('utf_8') + msg
+		self.accepted_connections[user].sendall(msg)
 
-		if user in self.accepted_connections:
-			msg = {'method':'DM', 'name':self.name, 'message':str(message)}
-			msg = json.dumps(msg)
-			msg = msg.encode('utf_8')
-			header = '{}:'.format(len(msg))
-			msg = header.encode('utf_8') + msg
-			self.accepted_connections[user].sendall(msg)
-			#print("accepted connection output")
-			#print(self.accepted_connections[user])
-			#print("user list output")
-			#print(self.user_list[user])
+		# write to file
+		fileName = "history.txt"
+		file2w = open(fileName,'a')
+		chat_log = {}
+		chat_log["date_time"] = datetime.now().strftime("%b-%d-%Y, %H:%M:%S")
+		chat_log["type"] = "personal"
+		chat_log["sender"] = self.name
+		chat_log["receiver"] = user
+		chat_log["message"] = message
+		json.dump(chat_log,file2w)
+		file2w.write('\n')
+		file2w.flush()	
+		os.fsync(file2w.fileno())
+		file2w.close()
+		
 
-			# write to file
-			fileName = "history.txt"
-			file2w = open(fileName,'a')
-			chat_log = {}
-			chat_log["date_time"] = datetime.now().strftime("%b-%d-%Y, %H:%M:%S")
-			chat_log["type"] = "personal"
-			chat_log["sender"] = self.name
-			chat_log["receiver"] = user
-			chat_log["message"] = message
-			json.dump(chat_log,file2w)
-			file2w.write('\n')
-			file2w.flush()	
-			os.fsync(file2w.fileno())
-			file2w.close()
-		else:
-			print('Unable to send message. User {} is either unknown or has not accepted request.'. format(user))
 
 	def send_Group_DM(self, user, message):
 		if user in self.accepted_group_connections:
@@ -188,11 +179,11 @@ class ChatClient(object):
 			port = self.user_list[user]['port']
 			req_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			try:
-				print('connecting to {} on server {} on port {}'.format(user, server, port))
+				#print('connecting to {} on server {} on port {}'.format(user, server, port))
 				req_socket.connect((server, port))
 				req_socket.sendall(msg)
 				self.socket_list.add(req_socket)
-				print('Sent request to {}'.format(user))
+				#print('Sent request to {}'.format(user))
 			except socket.error:
 				print('Unable to Connect to user {}'.format(user))	
 		else:
@@ -209,11 +200,11 @@ class ChatClient(object):
 			port = self.group_list[user]['port']
 			req_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			try:
-				print('connecting to {} on server {} on port {}'.format(user, server, port))
+				#print('connecting to {} on server {} on port {}'.format(user, server, port))
 				req_socket.connect((server, port))
 				req_socket.sendall(msg)
 				self.socket_list.add(req_socket)
-				print('Your request to join group {} has been sent.'.format(user))
+				#print('Your request to join group {} has been sent.'.format(user))
 			except socket.error:
 				print('Unable to Connect to group {}'.format(user))	
 		else:
@@ -223,9 +214,9 @@ class ChatClient(object):
 		method = msg['method']
 		name = msg['name']
 		if method == 'Request':
-			print('DM Request From {}...'.format(name))
-			print('accept DM request from {}? [y/n]...'.format(name))
-			choice = input()
+			#print('DM Request From {}...'.format(name))
+			#print('accept DM request from {}? [y/n]...'.format(name))
+			choice = 'y'
 			if choice == 'n':
 				return_msg = {'method':'Response', 'name':self.name, 'Response':'n'}
 				return_msg = json.dumps(return_msg)
@@ -244,9 +235,9 @@ class ChatClient(object):
 				socket.sendall(return_msg)
 		elif method == 'Group_Request':
 			group = msg['group']
-			print('Request to join group {} From {}...'.format(group, name))
-			print('Accept request From {} to join group {}? [y/n]...'.format(name, group))
-			choice = input()
+			#print('Request to join group {} From {}...'.format(group, name))
+			#print('Accept request From {} to join group {}? [y/n]...'.format(name, group))
+			choice = 'y'
 			if choice == 'n':
 				return_msg = {'method':'Response_Group', 'name':group, 'Response':'n'}
 				return_msg = json.dumps(return_msg)
@@ -267,7 +258,7 @@ class ChatClient(object):
 		elif method == 'Response':
 			response = msg['Response']
 			if response == 'y':
-				print('Messging Request from {} has been ACCEPTED.'.format(name))
+				#print('Messging Request from {} has been ACCEPTED.'.format(name))
 				self.accepted_connections[name] = socket
 			elif response == 'n':
 				print('Messaging Request from {} has been DECLINED.'.format(name))
@@ -276,10 +267,10 @@ class ChatClient(object):
 		elif method == 'Response_Group':
 			response = msg['Response']
 			if response == 'y':
-				print('Your request to join group {} has been ACCEPTED.'.format(name))
+				#print('Your request to join group {} has been ACCEPTED.'.format(name))
 				self.accepted_group_connections[name] = socket
 			elif response == 'n':
-				print('Your request to join group {} has been DECLINED.'.format(name))
+				#print('Your request to join group {} has been DECLINED.'.format(name))
 				self.socket_list.remove(socket)
  
 		elif method == 'DM':
@@ -333,7 +324,7 @@ class ChatClient(object):
 		group_sockets = [self.group_sockets[x]['socket'] for x in self.group_sockets]
 		for read_socket in readable:                                                                  
 			if read_socket == self.socket:
-				print('accepting incomming connection...')
+				#print('accepting incomming connection...')
 				(clientsocket, address) = read_socket.accept()
 				self.socket_list.add(clientsocket)
 			elif read_socket in group_sockets:
@@ -345,13 +336,17 @@ class ChatClient(object):
 				header = b''
 				closed = False
 				while ':' not in header.decode('utf_8'):
-					msg = clientsocket.recv(1)
-					if not msg:
-						print('A Socket has been closed...')
-						self.socket_list.remove(clientsocket)
-						closed = True
-						break
-					header += msg
+					try:
+						msg = clientsocket.recv(1)
+						if not msg:
+							#print('A Socket has been closed...')
+							self.socket_list.remove(clientsocket)
+							closed = True
+							break
+						header += msg
+					except ConnectionResetError:
+						pass
+
 
 				if not closed:
 					size = int(header.decode('utf_8').split(':')[0])
