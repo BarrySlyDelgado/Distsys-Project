@@ -13,7 +13,7 @@ Menu | 1: Online Users/Groups | 2: My Connections      | 3: Create Group     |
      | 7: Message Group       | 8: Show Personal Chats | 9: Show Group Chats |
 -------------------------------------------------------------------------------------------	
 
-Select from the menue as needed.
+Select from the menu as needed.
 
 Incoming requests or messages will appear on screen. 
 DM requests require user input to either accept or decline the request.
